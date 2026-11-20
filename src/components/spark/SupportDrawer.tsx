@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Compass, Users, CheckCircle2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Compass, Users, CheckCircle2 } from "lucide-react";
 import { useSupport } from "./support-context";
 import { user } from "@/lib/spark-data";
 
@@ -16,7 +15,6 @@ const cats = [
 
 export function SupportDrawer() {
   const { open, setOpen } = useSupport();
-  const [anon, setAnon] = useState(false);
   const [cat, setCat] = useState("mobility");
   const [text, setText] = useState("");
   const [done, setDone] = useState(false);
@@ -29,7 +27,7 @@ export function SupportDrawer() {
           <div className="flex h-full flex-col items-center justify-center gap-4 text-center animate-in fade-in zoom-in-95">
             <CheckCircle2 className="h-16 w-16 text-primary" />
             <h2 className="text-2xl font-bold">Request received</h2>
-            <p className="text-muted-foreground">{anon ? "Your anonymous note was routed to the Early Talent Program team." : "Your Early Talent Program Lead will reach out directly."}</p>
+            <p className="text-muted-foreground">Your Early Talent Program Lead will reach out to you directly.</p>
             <div className="glass w-full p-5 text-left">
               <p className="text-xs font-semibold uppercase text-muted-foreground">Assigned Lead</p>
               <p className="text-lg font-bold">Jasmine Nguyen</p>
@@ -42,22 +40,12 @@ export function SupportDrawer() {
           <div className="space-y-5">
             <SheetHeader className="p-0">
               <SheetTitle className="text-2xl">Support & Career Connect</SheetTitle>
-              <SheetDescription>Reach the Early Talent Program team confidentially.</SheetDescription>
+              <SheetDescription>Need help right away? Reach the Early Talent Program team.</SheetDescription>
             </SheetHeader>
-            <div className="glass flex items-center justify-between p-4">
-              <div>
-                <p className="font-semibold">{anon ? "Anonymous" : "Non-Anonymous"}</p>
-                <p className="text-xs text-muted-foreground">{anon ? "Identity hidden • routed to Early Talent team" : "Auto-filled for direct 1-on-1 follow-up"}</p>
-              </div>
-              <Switch checked={anon} onCheckedChange={setAnon} aria-label="Anonymous" />
+            <div className="grid gap-2">
+              <Input readOnly value={user.name} /><Input readOnly value={user.email} /><Input readOnly value={user.area} />
+              <p className="text-xs text-muted-foreground">Support requests are not anonymous so the Early Talent team can follow up with you right away.</p>
             </div>
-            {anon ? (
-              <div className="flex items-center gap-2 rounded-xl bg-secondary p-3 text-sm text-secondary-foreground"><ShieldCheck className="h-4 w-4" /> Your name, email and business area will not be shared.</div>
-            ) : (
-              <div className="grid gap-2">
-                <Input readOnly value={user.name} /><Input readOnly value={user.email} /><Input readOnly value={user.area} />
-              </div>
-            )}
             <div className="grid gap-2">
               {cats.map((c) => (
                 <button key={c.id} onClick={() => setCat(c.id)} className={`flex gap-3 rounded-2xl border-2 p-4 text-left transition ${cat === c.id ? "border-primary bg-secondary" : "border-border bg-card hover:border-primary/40"}`}>

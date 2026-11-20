@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Lock, Video, Clock, Target, Trophy, Medal, Check, Shuffle } from "lucide-react";
+import { useStoredState } from "@/lib/use-stored-state";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { buddy, connections, leaderboard } from "@/lib/spark-data";
@@ -8,10 +9,10 @@ import { buddy, connections, leaderboard } from "@/lib/spark-data";
 export const Route = createFileRoute("/check-in")({
   head: () => ({
     meta: [
-      { title: "Bi-Weekly Buddy Check-In — RBC Momentum" },
-      { name: "description", content: "Meet your cross-functional buddy, share an anonymous pulse check-in and play the RBC Momentum Connections game." },
-      { property: "og:title", content: "Bi-Weekly Buddy Check-In — RBC Momentum" },
-      { property: "og:description", content: "Pulse check-in, buddy match and a collaborative Connections game." },
+      { title: "Bi-Weekly Check-In — RBC Momentum" },
+      { name: "description", content: "Meet your cross-functional buddy, share an anonymous bi-weekly check-in and play the RBC Momentum Connections game." },
+      { property: "og:title", content: "Bi-Weekly Check-In — RBC Momentum" },
+      { property: "og:description", content: "Bi-weekly check-in, buddy match and a collaborative Connections game." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -21,11 +22,35 @@ export const Route = createFileRoute("/check-in")({
 
 const groupStyle: Record<string, string> = { gold: "bg-gold text-accent-foreground", blue: "bg-primary text-primary-foreground", sky: "bg-secondary text-secondary-foreground", red: "bg-rbc-red text-destructive-foreground" };
 
-function useCountdown() {
-  const [s, setS] = useState(25 * 60);
-  useEffect(() => { const t = setInterval(() => setS((x) => Math.max(0, x - 1)), 1000); return () => clearInterval(t); }, []);
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+// Sessions run every second Friday; the check-in auto-submits at 4:25 PM local time.
+const ANCHOR = new Date(2026, 10, 20, 16, 25).getTime();
+const TWO_WEEKS = 14 * 24 * 60 * 60 * 1000;
+
+function nextCutoff(now: number) {
+  return ANCHOR + Math.max(0, Math.ceil((now - ANCHOR) / TWO_WEEKS)) * TWO_WEEKS;
 }
+
+function useCountdown() {
+  const [left, setLeft] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => { const now = Date.now(); setLeft(nextCutoff(now) - now); };
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, []);
+  if (left === null) return "--:--:--";
+  const s = Math.floor(left / 1000);
+  const d = Math.floor(s / 86400);
+  const clock = [Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), s % 60].map((n) => String(n).padStart(2, "0")).join(":");
+  return d > 0 ? `${d}d ${clock}` : clock;
+}
+
+type Goal = { text: string; setAt: string };
+const initialGoal: Goal = {
+  text: "Book two coffee chats with Technology & Operations teams and finish the Python for Quants module.",
+  setAt: new Date(2026, 10, 6, 16, 5).toISOString(),
+};
+const fmtDate = (iso: string) => new Date(iso).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" });
 
 function CheckIn() {
   const countdown = useCountdown();
@@ -33,6 +58,7 @@ function CheckIn() {
   const [submitted, setSubmitted] = useState(false);
   const [finished, setFinished] = useState(false);
   const [score, setScore] = useState(0);
+  const [goal, setGoal] = useStoredState<Goal>("momentum.goal", initialGoal);
   const fields = [
     { k: "a" as const, label: "One positive highlight from the past two weeks" },
     { k: "b" as const, label: "One area of improvement you’d like to see in your area" },
@@ -41,7 +67,7 @@ function CheckIn() {
   const ready = form.a.trim() && form.b.trim() && form.c.trim();
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+    <main className="w-full space-y-6 px-6 py-8 lg:px-10">
       <section className="glass flex flex-wrap items-center gap-4 bg-welcome p-5">
         <div className="rounded-xl bg-primary px-4 py-2 font-display font-bold text-primary-foreground">FRIDAY | 4:00 PM – 4:20 PM</div>
         <div className="flex items-center gap-2 text-sm font-semibold"><Clock className="h-4 w-4 text-rbc-red" /> Auto-submits at 4:25 PM <span className="rounded-md bg-accent/30 px-2 font-mono">{finished ? "Submitted" : countdown}</span></div>
@@ -66,18 +92,18 @@ function CheckIn() {
                 <div className="mt-3 flex flex-wrap gap-1">{buddy.shared.map((s) => <span key={s} className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground">Shared: {s}</span>)}</div>
               </section>
               <section className="glass p-5">
-                <p className="flex items-center gap-1 text-xs font-bold uppercase text-muted-foreground"><Target className="h-4 w-4" /> Your Past Bi-Weekly Goal</p>
-                <p className="mt-2 font-semibold">"Book two coffee chats with Technology & Operations teams and finish the Python for Quants module."</p>
-                <p className="mt-1 text-xs text-muted-foreground">Set 2 weeks ago</p>
+                <p className="flex items-center gap-1 text-xs font-bold uppercase text-muted-foreground"><Target className="h-4 w-4" /> Your Bi-Weekly Goal</p>
+                <p className="mt-2 font-semibold">"{goal.text}"</p>
+                <p className="mt-1 text-xs text-muted-foreground">Set on {fmtDate(goal.setAt)}{submitted && " · updated from this check-in"}</p>
               </section>
             </div>
             <section className="glass space-y-4 p-5">
-              <div><h2 className="text-xl font-bold">Anonymous Pulse Check-In</h2><p className="text-sm text-muted-foreground">Fill these out individually while chatting with your buddy.</p></div>
+              <div><h2 className="text-xl font-bold">Bi-Weekly Check-In</h2><p className="text-sm text-muted-foreground">Fill these out individually while chatting with your buddy. Your responses are anonymous.</p></div>
               {fields.map((f) => (
                 <label key={f.k} className="block space-y-1"><span className="text-sm font-semibold">{f.label}</span>
                   <Textarea rows={2} disabled={submitted} value={form[f.k]} onChange={(e) => setForm({ ...form, [f.k]: e.target.value })} /></label>
               ))}
-              <Button className="w-full" size="lg" disabled={!ready || submitted} onClick={() => setSubmitted(true)}>
+              <Button className="w-full" size="lg" disabled={!ready || submitted} onClick={() => { setGoal({ text: form.c.trim(), setAt: new Date().toISOString() }); setSubmitted(true); }}>
                 {submitted ? <><Check className="h-4 w-4" /> Submitted · Sarah: Submitted ✓</> : "Submit Check-In & Unlock Game"}
               </Button>
             </section>
